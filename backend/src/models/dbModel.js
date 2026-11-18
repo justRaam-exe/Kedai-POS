@@ -49,6 +49,20 @@ db.serialize(() => {
             }
         });
     });
+
+    db.run(`CREATE TABLE IF NOT EXISTS products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        price REAL NOT NULL,
+        stock REAL NOT NULL,
+        unit TEXT NOT NULL
+    )`, (err) => {
+        if (err) {
+            console.error("Error make Products table:", err.message);
+        } else {
+            console.log('Products table created successfully');
+        }
+    });
 });
 
 module.exports = db;
