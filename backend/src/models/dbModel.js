@@ -10,23 +10,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
     }
 });
 
-// db.serialize(() => {
-//     db.run(`CREATE TABLE IF NOT EXISTS users (
-//         id INTERGER PRIMARY KEY AUTOINCREMENT,
-//         username TEXT UNIQUE,
-//         pin_code TEXT, -- contains 4 digit pin code
-//         role TEXT -- 'Kasir' or 'owner'
-//     )`);
-
-//     db.get("SELECT COUNT(*) as count FROM users", (err, row) => {
-//         if (row.count === 0) {
-//             db.run(`INSERT INTO users (username, pin_code) VALUES ('KSR', '1357', 'kasir')`);
-//             db.run(`INSERT INTO users (username, pin_code) VALUES ('OWN', '7531', 'owner')`);
-//             console.log('Default users inserted into the database');
-//         }
-//     });
-// });
-
 db.serialize(() => {
     // Jalankan perintah pembuatan tabel
     db.run(`CREATE TABLE IF NOT EXISTS users (
@@ -61,6 +44,39 @@ db.serialize(() => {
             console.error("Error make Products table:", err.message);
         } else {
             console.log('Products table created successfully');
+        }
+    });
+
+    db.run(`CREATE TABLE IF NOT EXISTS transactions (
+        id INTEGER PROMARY KEY AUTOINCREMENT,
+        invoice_code TEXT UNIQUE NOT NULL,
+        payment_method TEXT NOT NULL, -- cash or qris
+        total_amount REAL NOT NULL,
+        paid_amount REAL NOT NULL,
+        change_amount REAL NOT NULL,
+        created_at TEXT NOT NULL
+    )`, (err) => {
+        if (err) {
+            console.error("Error creating transactions table:", err.message);
+        } else {
+            console.log('Transactions table created successfully');
+        }
+    });
+    
+    db.run(`CREATE TABLE IF NOT EXISTS transaction_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        transaction_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
+        product_name TEXT NOT NULL,
+        price REAL NOT NULL,
+        qty REAL NOT NULL,
+        subtotal REAL NOT NULL,
+        FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+    )`, (err) => {
+        if (err) {
+            console.error("Error creating transaction items table:", err.message);
+        } else {
+            console.log('Transaction items table created successfully');
         }
     });
 });
