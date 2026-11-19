@@ -75,5 +75,45 @@ class _SalesViewState extends State<SalesView> {
     if (!_cart.containsKey(productId)) return;
     final currentQty = (_cart[productId]!['qty'] as num).toDouble();
     final newQty = currentQty + delta;
+
+    final product = _products.firstWhere(
+      (p) => p['id'] == productId,
+      orElse: () => {'stock': newQty},
+    );
+    final maxStock = (product['stock'] as num).toDouble();
+
+    if (newQty > maxStock) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Melebihi stok tersedia!')),
+      );
+      return;
+    }
+
+    setState(() {
+      if (newQty <= 0) {
+        _cart.remove(productId);
+      } else {
+        _cart[productId]!['qty'] = newQty;
+      }
+    });
+  }
+
+  double get _totalBelanja {
+    double total = 0;
+    for (final item in _cart.values) {
+      total += (item['price'] as double) * (item['qty'] as double);
+    }
+    return total;
+  }
+
+  String _formatRupiah(double amount) {
+    final intVal = amount.round().toString();
+    final chars = intVal.split('').reversed.toList();
+    final buffer = StringBuffer();
+    for (int i = 0; i < chars.length; i++) {
+      if (i > 0 && i % 3 == 0) buffer.write('.');
+      buffer.write(chars[i]);
+    }
+    return 'Rp ${buffer.toString().split('').reversed.join()}';
   }
 }
