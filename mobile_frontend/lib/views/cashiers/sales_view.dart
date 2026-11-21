@@ -116,4 +116,173 @@ class _SalesViewState extends State<SalesView> {
     }
     return 'Rp ${buffer.toString().split('').reversed.join()}';
   }
+
+  void _openCheckoutModal() {
+    if (_cart.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Choose 1 first!')),
+      );
+      return;
+    }
+    String selectedMethod = 'qris';
+    final cashController = TextEditingController(text: _totalBelanja.round().toString());
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final double paidCash = double.tryParse(cashController.text.trim()) ?? 0;
+            final double changeCash = selectedMethod == 'cash' ? (paidCash >= _totalBelanja ? paidCash - _totalBelanja : 0) : 0;
+
+            return AlertDialog(
+              backgroundColor: AppColors.background,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text(
+                'Pembayaran Transaksi',
+                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark),
+              ),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total tagihan', style: TextStyle(fontSize: 15)),
+                          Text(
+                            _formatRupiah(_totalBelanja),
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Pilih Metode Pembayaran:', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Center(child: Text('QRIS')),
+                            selected: selectedMethod == 'qris',
+                            selectedColor: AppColors.primary,
+                            labelStyle: TextStyle(
+                              color: selectedMethod == 'qris' ? Colors.white : AppColors.textDark,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            onSelected: (_) {
+                              setModalState(() => selectedMethod = 'qris');
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Center(child: Text('CASH')),
+                            selected: selectedMethod == 'cash',
+                            selectedColor: AppColors.primary,
+                            labelStyle: TextStyle(
+                              color: selectedMethod == 'cash' ? Colors.white : AppColors.textDark,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            onSelected: (_) {
+                              setModalState(() => selectedMethod = 'cash');
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    if (selectedMethod == 'qris')
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.green.withOpacity(0.4)),
+                        ),
+                        child: const Text(
+                          'Selesaikan Pembayaran untuk langsung menandai transaksi lunas',
+                          style: TextStyle(fontSize: 13, color: Colors.black87),
+                        ),
+                      )
+                    else ...[
+                      TextField(
+                        controller: cashController,
+                        keyboardType: TextInputType.number,
+                        onChanged: (_) => setModalState(() {}),
+                        decoration: InputDecoration(
+                          labelText: 'Uang Diterima',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Kembalian', style: TextStyle(fontWeight: FontWeight.w600)),
+                          Text(
+                            _formatRupiah(changeCash),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _isSubmitting ? null : () async {
+                    final double paidAmount = selectedMethod == 'qris' ? _totalBelanja : (double.tryParse(cashController.text.trim()) ?? 0);
+                    if (selectedMethod == 'cash' && paidAmount < _totalBelanja) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Uang tunai kurang dari total belanja!')),
+                      );
+                      return;
+                    }
+
+                    Navigator.pop(ctx);
+                    await _submitTransaction(
+                      paymentMethod: selectedMethod,
+                      paidAmount: paidAmount,
+                    );
+                  },
+                  child: Text(
+                    selectedMethod == 'qris' ? 'selesaikan pembayaran' : 'bayar tunai',
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _submitTransaction({
+    required String paymentMethod,
+    required double paidAmount,
+  })
 }
