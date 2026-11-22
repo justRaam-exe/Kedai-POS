@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../auth/login_view.dart';
 import 'sales_view.dart';
-import 'warehouse_view.dart';
 
 class CashierDashboard extends StatelessWidget {
   const CashierDashboard({Key? key}) : super(key: key);

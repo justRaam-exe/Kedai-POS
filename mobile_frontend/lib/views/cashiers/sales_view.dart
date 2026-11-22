@@ -348,4 +348,32 @@ class _SalesViewState extends State<SalesView> {
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
+
+  Widget _buildProductGrid() {
+    if (_isLoadingProducts) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+    if (_products.isEmpty) {
+      return const Center(
+        child: Text('Belum ada produk, Tambahkan barang di menu stok gudang terlebih dahulu'),
+      );
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 230,
+        childAspectRatio: 0.95,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
+      ),
+      itemCount: _products.length,
+      itemBuilder: (context, index) {
+        final p = _products[index];
+        final double price = (p['price'] as num).toDouble();
+        final double stock = (p['stock'] as num).toDouble();
+        final String unit = p['unit'] ?? 'pcs';
+      },
+    )
+  }
 }
