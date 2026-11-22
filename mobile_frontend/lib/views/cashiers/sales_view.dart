@@ -284,5 +284,68 @@ class _SalesViewState extends State<SalesView> {
   Future<void> _submitTransaction({
     required String paymentMethod,
     required double paidAmount,
-  })
+  }) async {
+    setState(() => _isSubmitting = true);
+    try {
+      final payload = {
+        'payment_method' : paymentMethod,
+        'paid_amount' : paidAmount,
+        'items' : _cart.values.toList(),
+      };
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/transactions'),
+        headers: {'Content-Type' : 'application/json'},
+        body: jsonEncode(payload)
+      );
+
+      final decoded = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && decoded['success'] == true) {
+        final txData = decoded['data'];
+        setState(() {
+          _cart.clear();
+        });
+        await _fetchProducts(); //Refresh for new stock
+
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Transaksi Berhasil!'),
+            content: Text(
+              'No. Invoice: ${txData['invoice_code']}\n'
+                  'Metode: ${paymentMethod.toUpperCase()}\n'
+                  'Total: ${_formatRupiah((txData['total_amount'] as num).toDouble())}\n'
+                  'Kembalian: ${_formatRupiah((txData['change_amount'] as num).toDouble())}',
+            ),
+            actions: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          )
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(decoded['message'] ?? 'Gagal Memproses Transaksi')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error koneksi transaksi: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
 }
