@@ -1,171 +1,241 @@
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+
+import '../../constants/api_config.dart';
 import '../../constants/app_colors.dart';
 import '../cashiers/cashier_dashboard.dart';
 import '../owners/owner_dashboard.dart';
 
 class LoginView extends StatefulWidget {
-  const LoginView({Key? key}) : super(key: key);
+  const LoginView({super.key});
 
   @override
-  _LoginViewState createState() => _LoginViewState();
+  State<LoginView> createState() => _LoginViewState();
 }
 
 class _LoginViewState extends State<LoginView> {
+  final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _pinController = TextEditingController();
+  final _pinFocus = FocusNode();
   bool _isLoading = false;
+  bool _hidePin = true;
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _pinController.dispose();
+    _pinFocus.dispose();
+    super.dispose();
+  }
+
+  void _message(String value) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
+  }
 
   Future<void> _handleLogin() async {
-    final username = _usernameController.text.trim();
-    final pin = _pinController.text.trim();
-
-    if (username.isEmpty || pin.length != 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please Input your username and PIN')),
-      );
-      return;
-    }
+    if (_isLoading) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    FocusScope.of(context).unfocus();
 
     setState(() => _isLoading = true);
-
     try {
-      final response = await http.post(
-        Uri.parse('http://localhost:3000/api/auth/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'pin_code': pin}),
-      );
-
+      final response = await http
+          .post(
+            ApiConfig.login,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'username': _usernameController.text.trim(),
+              'pin_code': _pinController.text.trim(),
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
       final data = jsonDecode(response.body);
-
+      if (!mounted) return;
       if (response.statusCode == 200 && data['success'] == true) {
         final role = data['data']['role'];
-
-        if (!mounted) return;
-
         if (role == 'kasir') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const CashierDashboard()),
+            MaterialPageRoute<void>(builder: (_) => const CashierDashboard()),
           );
         } else if (role == 'owner') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const OwnerDashboard()),
+            MaterialPageRoute<void>(builder: (_) => const OwnerDashboard()),
           );
+        } else {
+          _message('Peran akun tidak dikenali. Hubungi owner.');
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['message'] ?? 'Login Gagal')),
-        );
+        _message(data['message'] ?? 'Login gagal. Periksa username dan PIN.');
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Terjadi kesalahan koneksi: $e')),
-      );
+    } catch (_) {
+      if (mounted) {
+        _message('Tidak dapat terhubung ke server. Periksa koneksi dan alamat API.');
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 450),
-            padding: const EdgeInsets.all(32.0),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 20,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-              border: Border.all(color: AppColors.accent.withOpacity(0.4), width: 1.5),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Icon(Icons.restaurant_menu, size: 64, color: AppColors.primary),
-                const SizedBox(height: 16),
-                const Text(
-                  'Kedai Seblak Rheya',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+      backgroundColor: AppColors.surface,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 430),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _header(),
+                  const SizedBox(height: 20),
+                  _formCard(),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Lupa PIN? Hubungi owner kedai.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                   ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Silahkan Login sesuai hak akses',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-                const SizedBox(height: 32),
-
-                // form username
-                TextField(
-                  controller: _usernameController,
-                  decoration: InputDecoration(
-                    labelText: 'Username',
-                    prefixIcon: const Icon(Icons.person, color: AppColors.primary),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // form PIN 4 digit
-                TextField(
-                  controller: _pinController,
-                  keyboardType: TextInputType.number,
-                  maxLength: 4,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'PIN (4 Digit Angka)',
-                    counterText: '',
-                    prefixIcon: const Icon(Icons.lock, color: AppColors.primary),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                      borderRadius: BorderRadius.circular(10)
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 30),
-
-                // Tombol Login
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: _isLoading ? null : _handleLogin,
-                  child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                      'Masuk Aplikasi',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _header() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 26, 24, 24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.bannerStart, AppColors.bannerEnd],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(.18),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withOpacity(.4)),
+            ),
+            child: const Icon(Icons.ramen_dining_rounded, size: 42, color: Colors.white),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Kedai Seblak Rheya',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Manajemen stok & opname',
+            style: TextStyle(color: Colors.white, fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _formCard() {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.05),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Selamat datang!',
+              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: AppColors.textDark),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Masuk dengan username dan PIN dari owner.',
+              style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 20),
+            TextFormField(
+              controller: _usernameController,
+              textInputAction: TextInputAction.next,
+              autocorrect: false,
+              onFieldSubmitted: (_) => _pinFocus.requestFocus(),
+              decoration: const InputDecoration(
+                labelText: 'Username',
+                prefixIcon: Icon(Icons.person_outline),
+              ),
+              validator: (v) =>
+                  (v ?? '').trim().isEmpty ? 'Username wajib diisi' : null,
+            ),
+            const SizedBox(height: 14),
+            TextFormField(
+              controller: _pinController,
+              focusNode: _pinFocus,
+              obscureText: _hidePin,
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.done,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(4),
+              ],
+              onFieldSubmitted: (_) => _handleLogin(),
+              decoration: InputDecoration(
+                labelText: 'PIN (4 angka)',
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  tooltip: _hidePin ? 'Tampilkan PIN' : 'Sembunyikan PIN',
+                  onPressed: () => setState(() => _hidePin = !_hidePin),
+                  icon: Icon(
+                    _hidePin ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  ),
+                ),
+              ),
+              validator: (v) => (v ?? '').trim().length != 4 ? 'PIN harus 4 angka' : null,
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              height: 52,
+              child: FilledButton(
+                onPressed: _isLoading ? null : _handleLogin,
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                      )
+                    : const Text(
+                        'Masuk',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                      ),
+              ),
+            ),
+          ],
         ),
       ),
     );
