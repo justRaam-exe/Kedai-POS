@@ -10,11 +10,11 @@ class CashierDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     final List menuItems = [
       {'title': 'Sales', 'icon': Icons.point_of_sale, 'color': AppColors.primary, 'view': const SalesView()},
-      {'title': 'Stok Gudang', 'icon':Icons.inventory, 'color': AppColors.accent, 'view': const WarehouseView()},
-      {'title': 'History', 'icon':Icons.history, 'color': AppColors.primary, 'view': const HistoryView()},
-      {'title': 'Kustomisasi Struk', 'icon':Icons.receipt, 'color': AppColors.primary, 'view': const ReceiptCustomizationView()},
-      {'title': 'Tutup Harian', 'icon':Icons.assessment, 'color': AppColors.primary, 'view': const DailyClosingView()},
-      {'title': 'Setelan', 'icon':Icons.settings, 'color': AppColors.primary, 'view': const SettingView()},
+      // {'title': 'Stok Gudang', 'icon':Icons.inventory, 'color': AppColors.accent, 'view': const WarehouseView()},
+      // {'title': 'History', 'icon':Icons.history, 'color': AppColors.primary, 'view': const HistoryView()},
+      // {'title': 'Kustomisasi Struk', 'icon':Icons.receipt, 'color': AppColors.primary, 'view': const ReceiptCustomizationView()},
+      // {'title': 'Tutup Harian', 'icon':Icons.assessment, 'color': AppColors.primary, 'view': const DailyClosingView()},
+      // {'title': 'Setelan', 'icon':Icons.settings, 'color': AppColors.primary, 'view': const SettingView()},
     ];
 
     return Scaffold(

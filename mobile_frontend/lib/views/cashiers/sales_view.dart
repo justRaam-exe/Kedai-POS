@@ -373,7 +373,223 @@ class _SalesViewState extends State<SalesView> {
         final double price = (p['price'] as num).toDouble();
         final double stock = (p['stock'] as num).toDouble();
         final String unit = p['unit'] ?? 'pcs';
+
+        return InkWell(
+          onTap: () => _addToCart(p),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.accent.withOpacity(0.6)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Icon(Icons.fastfood, color: AppColors.primary, size: 28),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: stock > 0 ? Colors.orange.withOpacity(0.12) : Colors.red.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Stok: $stock $unit',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: stock > 0 ? AppColors.textDark : Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      p['name'] ?? '-',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _formatRupiah(price),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
       },
-    )
+    );
+  }
+
+  Widget _buildCartPanel() {
+    final items = _cart.values.toList();
+
+    return Container(
+      color: AppColors.greyLight,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Keranjang Penjualan',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textDark),
+          ),
+          const Divider(height: 20),
+          Expanded(
+            child: items.isEmpty ? const Center(child: Text('Belum ada item dipilih')) : ListView.separated(
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const Divider(height: 12),
+              itemBuilder: (context, idx) {
+                final item = items[idx];
+                final int pid = item['product_id'];
+                final double qty = (item['qty'] as num).toDouble();
+                final double price = (item['price'] as num).toDouble();
+
+                return Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(item['product_name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text('${_formatRupiah(price)} / ${item['unit']}'),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline, color: AppColors.primary),
+                      onPressed: () => _updateQty(pid, -1),
+                    ),
+                    Text('$qty', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline, color: AppColors.primary),
+                      onPressed: () => _updateQty(pid, 1),
+                    ),
+                  ],
+                );
+              }
+            ),
+          ),
+          const Divider(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Total', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              Text(
+                _formatRupiah(_totalBelanja),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+            ),
+            onPressed: _isSubmitting ? null : _openCheckoutModal,
+            child: _isSubmitting
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Text(
+                  'PROSES BAYAR (CASH / QRIS)',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Sales - Kasir Kedai Seblak Rheya'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchProducts,
+          ),
+        ],
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWideScreen = constraints.maxWidth >= 800;
+          if (isWideScreen) {
+            return Row(
+              children: [
+                Expanded(flex: 7, child: _buildProductGrid()),
+                const VerticalDivider(width: 1),
+                SizedBox(width: 380, child: _buildCartPanel()),
+              ],
+            );
+          }
+
+          return Column(
+            children: [
+              Expanded(child: _buildProductGrid()),
+              container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, -2)),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('${_cart.length} item dipilih', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                        Text(
+                          _formatRupiah(_totalBelanja),
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+
+                  ],
+                )
+              )
+            ],
+          )
+        },
+      ),
+    );
   }
 }
