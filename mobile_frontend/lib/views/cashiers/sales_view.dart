@@ -560,7 +560,7 @@ class _SalesViewState extends State<SalesView> {
           return Column(
             children: [
               Expanded(child: _buildProductGrid()),
-              container(
+              Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -582,12 +582,28 @@ class _SalesViewState extends State<SalesView> {
                         ),
                       ],
                     ),
-
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (_) => SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.72,
+                            child: _buildCartPanel(),
+                          )
+                        );
+                      },
+                      child: const Text('Lihat Keranjang & Bayar'),
+                    ),
                   ],
-                )
-              )
+                ),
+              ),
             ],
-          )
+          );
         },
       ),
     );
