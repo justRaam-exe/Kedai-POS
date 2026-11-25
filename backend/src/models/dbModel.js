@@ -33,12 +33,28 @@ db.serialize(() => {
         });
     });
 
+    db.run(`CREATE TABLE IF NOT EXISTS categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL
+    )`, (err) => {
+        if (err) {
+            console.error("Error make categories table:", err.message);
+        } else {
+            console.log('Categories table created successfully');
+        }
+    }) 
+
     db.run(`CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category_id INTEGER,
+        item_code TEXT UNIQUE NOT NULL,
         name TEXT NOT NULL,
         price REAL NOT NULL,
         stock REAL NOT NULL,
-        unit TEXT NOT NULL
+        unit TEXT NOT NULL,
+        min_stock REAL NOT NULL DEFAULT 0,
+        image_path TEXT,
+        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
     )`, (err) => {
         if (err) {
             console.error("Error make Products table:", err.message);
