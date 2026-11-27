@@ -458,4 +458,121 @@ class _WarehouseViewState extends State<WarehouseView> {
   }
 
   // Confirmed delete pop up
+  void _confirmDeleteProduct(Map<String, dynamic> product) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: AppColors.background,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: const Text(
+            'Apakah ingin menghapus barang ini?',
+            style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark),
+          ),
+          content: Text(
+            'Barang ${product['name']} (${product['item_code'] ?? '-'}) akan dihapus secara permanen dari gudang dan katolog penjualan',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try {
+                  final res = await http.delete(Uri.parse('$_baseUrl/products/${product['id']}'));
+                  final data = jsonDecode(res.body);
+                  if (res.statusCode == 200 && data['success'] == true) {
+                    await _loadData();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Barang berhasil dihapus')),
+                      );
+                    }
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(data['message'] ?? 'Gagal menghapus barang')),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error menghapus barang: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('OK'),
+            )
+          ],
+        );
+      }
+    );
+  }
+
+  Widget _buildProductCard(Map<String, dynamic> product) {
+    final String? imgPath = product['image_path']?.toString();
+    final bool hasImage = imgPath != null && imgPath.isNotEmpty;
+    final String categoryName = product['category_name']?.toString() ?? 'Tanpa kategori';
+    final num price = product['price'] ?? 0;
+    final num stock = product['stock'] ?? 0;
+    final String unit = product['unit']?.toString() ?? 'pcs';
+    final String code = product['item_code']?.toString() ?? '';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.accent.withOpacity(0.6), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasImage) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.file(
+                File(imgPath),
+                height: 115,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(8)
+                  ),
+                ),
+              )
+            ],
+          )
+        ],
+      ),
+    )
+  }
 }
