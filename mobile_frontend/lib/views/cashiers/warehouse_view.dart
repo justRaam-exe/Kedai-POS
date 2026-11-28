@@ -104,7 +104,7 @@ class _WarehouseViewState extends State<WarehouseView> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(ctx)
+                Navigator.pop(ctx);
               },
               child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
             ),
@@ -265,7 +265,7 @@ class _WarehouseViewState extends State<WarehouseView> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12)
+                      const SizedBox(height: 12),
 
                       // Name Text Field
                       TextField(
@@ -323,7 +323,7 @@ class _WarehouseViewState extends State<WarehouseView> {
 
                       // Category Option List
                       DropdownButtonFormField<int?>(
-                        value: selectedcategoryId,
+                        value: selectedCategoryId,
                         decoration: InputDecoration(
                           labelText: 'Kategori barang',
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -567,12 +567,248 @@ class _WarehouseViewState extends State<WarehouseView> {
                     color: AppColors.accent.withOpacity(0.25),
                     borderRadius: BorderRadius.circular(8)
                   ),
+                  child: Text(
+                    categoryName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textDark,
+                    ),
+                  ),
                 ),
-              )
+              ),
+              if (code.isNotEmpty) Text(
+                code,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey),
+              ),
             ],
-          )
+          ),
+          const SizedBox(height: 8),
+
+          // Nama barang
+          Text(
+            product['name']?.toString() ?? '-',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark),
+          ),
+          const SizedBox(height: 4),
+
+          // Harga barang
+          Text(
+            _formatRupiah(price),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primary),
+          ),
+          const SizedBox(height: 4),
+
+          // Stok barang
+          Text(
+            'Stok: $stock $unit',
+            style: const TextStyle(fontSize: 13, color: Colors.black87),
+          ),
+
+          const Spacer(),
+          const SizedBox(height: 10),
+
+          // button kelola barang & button hapus barang
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () => _showProductFormDialog(existingProduct: product),
+                  child: const Text('Kelola barang', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () => _confirmDeleteProduct(product),
+                  child: const Text('Hapus Barang', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
-    )
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredProducts = _selectedCategoryFilter == null
+        ? _products
+        : _products.where((p) => p['category_id'] == _selectedCategoryFilter).toList();
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Stok Gudang - Kedai Seblak Rheya'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadData,
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          _isLoading
+              ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+              : _products.isEmpty
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24.0),
+                        child: Text(
+                          "Gudang masih kosong, Tekan tanda '+' untuk menambah barang dan kategori",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 16, color: AppColors.textDark),
+                        ),
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_categories.isNotEmpty)
+                          SizedBox(
+                            height: 54,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: ChoiceChip(
+                                    label: const Text('Semua'),
+                                    selected: _selectedCategoryFilter == null,
+                                    selectedColor: AppColors.primary,
+                                    labelStyle: TextStyle(
+                                      color: _selectedCategoryFilter == null ? Colors.white : AppColors.textDark,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    onSelected: (_) => setState(() => _selectedCategoryFilter = null),
+                                  ),
+                                ),
+                                ..._categories.map((cat) {
+                                  final int catId = cat['id'] as int;
+                                  final bool selected = _selectedCategoryFilter == catId;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: ChoiceChip(
+                                      label: Text(cat['name'].toString()),
+                                      selected: selected,
+                                      selectedColor: AppColors.primary,
+                                      labelStyle: TextStyle(
+                                        color: selected ? Colors.white : AppColors.textDark,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      onSelected: (_) => setState(() => _selectedCategoryFilter = catId),
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                        Expanded(
+                          child: GridView.builder(
+                            padding: const EdgeInsets.all(16),
+                            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: 280,
+                              childAspectRatio: 0.78,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                            ),
+                            itemCount: filteredProducts.length,
+                            itemBuilder: (context, index) => _buildProductCard(filteredProducts[index]),
+                          ),
+                        ),
+                      ],
+                  ),
+          if (_isFabMenuOpen)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => setState(() => _isFabMenuOpen = false),
+                child: Container(
+                  color: Colors.black.withOpacity(0.25),
+                  alignment: Alignment.bottomRight,
+                  padding: const EdgeInsets.only(right: 24, bottom: 96),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _buildDriveActionRow(
+                        label: 'Tambah kategori',
+                        icon: Icons.create_new_folder,
+                        onTap: _showAddCategoryDialog,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildDriveActionRow(
+                        label: 'Tambah barang',
+                        icon: Icons.add_box,
+                        onTap: () => _showProductFormDialog(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        onPressed: () => setState(() => _isFabMenuOpen = !_isFabMenuOpen),
+        child: Icon(_isFabMenuOpen ? Icons.close : Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildDriveActionRow({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 6, offset: const Offset(0, 2)),
+            ],
+          ),
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark),
+          ),
+        ),
+        const SizedBox(width: 10),
+        FloatingActionButton.small(
+          heroTag: label,
+          backgroundColor: AppColors.accent,
+          foregroundColor: AppColors.textDark,
+          onPressed: onTap,
+          child: Icon(icon),
+        )
+      ],
+    );
   }
 }
